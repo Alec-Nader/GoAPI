@@ -44,15 +44,32 @@ func returnPerson(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// createPerson takes a request body and unmarshals it into a person struct. It then appends the People[] with that person from the request body. Finally, it responds with the accepted person JSON.
 func createPerson(w http.ResponseWriter, r *http.Request) {
 	// use ioutil to parse the POST request body.
 	reqBody, _ := ioutil.ReadAll(r.Body)
+
 	var person Person
+
 	json.Unmarshal(reqBody, &person)
 
 	People = append(People, person)
 
 	json.NewEncoder(w).Encode(person)
+}
+
+// deletePerson checks the query parameter for the person's ID to find which index item to remove from the array. Responds with the item removed as JSON.
+func deletePerson(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	for i, person := range People {
+		if person.ID == id {
+			People = append(People[:i], People[i+1:]...)
+			json.NewEncoder(w).Encode(person)
+		}
+	}
+
 }
 
 // handleRequests handles HTTP requests by use of the gorilla/mux router instead of the http/net.
@@ -62,6 +79,7 @@ func handleRequests() {
 	myRouter.HandleFunc("/", home)
 	myRouter.HandleFunc("/allPeople", allPeople)
 	myRouter.HandleFunc("/person", createPerson).Methods("POST")
+	myRouter.HandleFunc("/person/{id}", deletePerson).Methods("DELETE")
 	myRouter.HandleFunc("/person/{id}", returnPerson)
 
 	log.Fatal(http.ListenAndServe(":10000", myRouter))

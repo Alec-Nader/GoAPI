@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 
@@ -19,15 +20,15 @@ type Person struct {
 // People - the fake dataset I will use in place of a database.
 var People []Person
 
+// home function handles the homepage request and returns a string to the page.
+func home(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Hello World!")
+}
+
 // AllPeople is a function which is called when the endpoint /allPeople is requested. AllPeople returns the encoded JSON of the People object.
 func allPeople(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("GET all people")
 	json.NewEncoder(w).Encode(People)
-}
-
-// home function handles the homepage request and returns a string to the page.
-func home(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello World!")
 }
 
 // returnPerson function utilizes the mux router and the query parameter to select and return the proper person by ID.
@@ -43,12 +44,24 @@ func returnPerson(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func createPerson(w http.ResponseWriter, r *http.Request) {
+	// use ioutil to parse the POST request body.
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	var person Person
+	json.Unmarshal(reqBody, &person)
+
+	People = append(People, person)
+
+	json.NewEncoder(w).Encode(person)
+}
+
 // handleRequests handles HTTP requests by use of the gorilla/mux router instead of the http/net.
 func handleRequests() {
 	myRouter := mux.NewRouter().StrictSlash(true)
 
 	myRouter.HandleFunc("/", home)
 	myRouter.HandleFunc("/allPeople", allPeople)
+	myRouter.HandleFunc("/person", createPerson).Methods("POST")
 	myRouter.HandleFunc("/person/{id}", returnPerson)
 
 	log.Fatal(http.ListenAndServe(":10000", myRouter))
